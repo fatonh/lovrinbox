@@ -1,34 +1,40 @@
 package main
 
 import (
-	"log"
+	"flag"
+	"log/slog"
 	"net/http"
+	"os"
 )
 
+type application struct {
+	logger *slog.Logger
+}
+
 func main() {
-	// use the http.NewServeMux to create a new ServeMux
-	// then register the home function as the handler for the "/" route
-	mux := http.NewServeMux()
 
-	// Create a file server which serves files out of the "./ui/static" directory.
-	// Note that the path given to the http.Dir function is relative to the project
-	// directory root.
-	fileServer := http.FileServer(http.Dir("./ui/static/"))
-	// Use the mux.Handle() method to register the file server as the handler for
-	// all URL paths starting with "/static/". To do this, we use the
-	// http.StripPrefix() function to modify the request URL path before the
-	// file server sees it. If we didn't do this, the file server would look for
-	// files with paths like "./ui/static/static/css/main.css", which obviously
-	// don't exist. By using http.StripPrefix(), the file server will see a path
-	// like "./ui/static/css/main.css", which is correct.
-	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
+	// use command-line flag to specify the network address
+	// the default value is ":4000"
+	addr := flag.String("addr", ":4000", "HTTP network address")
+	flag.Parse()
 
-	mux.HandleFunc("GET /{$}", home)
-	mux.HandleFunc("GET /snippet/view/{id}", snippetView)
-	mux.HandleFunc("GET /snippet/create", snippetCreate)
-	mux.HandleFunc("POST /snippet/craete", snippetCreatePost)
+	// use the slog.NEW() function to create a new logger
+	// which writes messages to the standard output stream
+	// which write to the standard out stream and uses the
+	// the default settings.
+	logger := slog.New(slog.NewJSONHandler(os.Stdout,
+		&slog.HandlerOptions{Level: slog.LevelDebug, AddSource: true}))
 
-	log.Print("starting server on :4000")
+	// Initialize a new instance of application containing
+	// the dependencies for our application struct, containing
+	// the dependencies (for noew, just the struct logger)
+	app := &application{
+		logger: logger,
+	}
+
+	// use the Info() method to log the starting server message
+	// at info severity level
+	logger.Info("Starting server", "addr", *addr)
 
 	// use the htt.ListenAndServe function to start
 	// a new web server. We pass in two parameters: The TCP netweokd address
@@ -38,7 +44,12 @@ func main() {
 	// to log the error message and terminate the program.
 	// Note that any error returned by http.ListenAndServe is
 	// allways non-nil.
-	err := http.ListenAndServe(":4000", mux)
-	log.Fatal(err)
+	err := http.ListenAndServe(*addr, app.routes())
+
+	// use Error() method to log the error message returned by
+	// http.ListenAndServe at error severity level
+	// and then call os.Exit(1) to terminate the program
+	logger.Error(err.Error())
+	os.Exit(1)
 
 }

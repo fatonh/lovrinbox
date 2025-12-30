@@ -3,15 +3,23 @@ package main
 import (
 	"database/sql"
 	"flag"
+	"html/template"
 	"log/slog"
 	"net/http"
 	"os"
 
+	// import our costum models package
+	"github.com/fatonh/lovrinbox/internal/models"
+
 	_ "github.com/go-sql-driver/mysql"
 )
 
+// add logger and snippets fields to the application struct
+// so we can use it in our handler methods
 type application struct {
-	logger *slog.Logger
+	logger        *slog.Logger
+	snippets      *models.SnippetModel
+	templateCache map[string]*template.Template
 }
 
 func main() {
@@ -48,11 +56,19 @@ func main() {
 	// connection pool is closed before the main() function exits
 	defer db.Close()
 
+	// Initialize a new template cache...
+	templateCache, err := newTemplateCache()
+	if err != nil {
+		logger.Error(err.Error())
+		os.Exit(1)
+	}
+
 	// Initialize a new instance of application containing
-	// the dependencies for our application struct, containing
-	// the dependencies (for noew, just the struct logger)
+	// the dependencies for our application struct.
 	app := &application{
-		logger: logger,
+		logger:        logger,
+		snippets:      &models.SnippetModel{DB: db},
+		templateCache: templateCache,
 	}
 
 	// use the Info() method to log the starting server message

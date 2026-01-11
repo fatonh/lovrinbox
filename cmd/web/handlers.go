@@ -12,12 +12,8 @@ import (
 // change the signature of the home handler function
 // so it is defined as method against *application
 func (app *application) home(w http.ResponseWriter, r *http.Request) {
-	// Use the Header().Add() method to add a
-	// 'Server: GO' header to the
-	// response header map. the first
-	// parameter is the header name, and the second
-	// parameter is the header value.
-	w.Header().Add("Server", "GO")
+
+	//panic("oops! something went wrong") // deliberate panic for testing.
 
 	snippets, err := app.snippets.Latest()
 	if err != nil {
